@@ -179,3 +179,4 @@ tags
 
 # wandb
 wandb
+/.diffusers
