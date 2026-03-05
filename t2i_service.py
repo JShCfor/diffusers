@@ -30,7 +30,16 @@ PRESETS = {
         "def_width":  1024,
         "def_height": 1024,
         "sizes":      [512, 768, 832, 1024],
-        "variant":    "fp16",   # 仅加载 fp16 权重文件
+        "variant":    "fp16",
+    },
+    "illustrious": {
+        "path":        os.environ.get("ILLUSTRIOUS_PATH", "./models/Illustrious-XL-v2.0.safetensors"),
+        "pipeline":    StableDiffusionXLPipeline,
+        "label":       "Illustrious XL v2.0 (光辉系 · 1024px)",
+        "def_width":   1024,
+        "def_height":  1024,
+        "sizes":       [512, 768, 832, 1024],
+        "single_file": True,
     },
 }
 
@@ -55,11 +64,14 @@ def load_pipe(model_key: str):
     preset = PRESETS[model_key]
     print(f"[加载] {preset['label']}  ←  {preset['path']}")
     load_kwargs = dict(torch_dtype=dtype)
-    if "variant" in preset:
-        load_kwargs["variant"] = preset["variant"]
-    if preset["pipeline"] is StableDiffusionPipeline:
-        load_kwargs["safety_checker"] = None
-    pipe = preset["pipeline"].from_pretrained(preset["path"], **load_kwargs)
+    if preset.get("single_file"):
+        pipe = preset["pipeline"].from_single_file(preset["path"], **load_kwargs)
+    else:
+        if "variant" in preset:
+            load_kwargs["variant"] = preset["variant"]
+        if preset["pipeline"] is StableDiffusionPipeline:
+            load_kwargs["safety_checker"] = None
+        pipe = preset["pipeline"].from_pretrained(preset["path"], **load_kwargs)
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
     pipe = pipe.to(device)
     pipe.enable_attention_slicing()
@@ -149,6 +161,7 @@ with gr.Blocks(title="文生图服务") as demo:
             ["sd15",  "a majestic lion in the savanna, golden hour, cinematic lighting", "", 20, 7.5, 512,  512,  42, 1],
             ["sdxl",  "夕阳下的富士山，水彩画风格，超高细节", "blurry, bad quality",     25, 7.5, 1024, 1024, -1, 1],
             ["sd15",  "cyberpunk city at night, neon lights, rain, ultra detailed",      "", 30, 8.0, 512,  512,  -1, 2],
+            ["illustrious", "1girl, white hair, blue eyes, school uniform, cherry blossoms, masterpiece", "low quality, worst quality", 25, 7.0, 1024, 1024, -1, 1],
         ],
         inputs=[model_dd, prompt, negative, steps, guidance, width, height, seed, batch],
     )
